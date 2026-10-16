@@ -443,30 +443,24 @@ function tick(now){
 function pedalPress(){vigilanceLast=performance.now();warningStart=null;$("pedalTime").textContent="최근 입력: "+deviceTimeText()}
 function toggleOvertake(){overtakeMode=!overtakeMode;log("추월 모드 "+(overtakeMode?"ON · 앞앞차 기준":"OFF"));render();updateTrack()}
 
-// UP (ArrowUp): 제동(B) 방향에서 중립(N)으로, 혹은 중립(N)에서 가속(P) 방향으로 이동
+// UP: 제동 -> 중립 -> 가속 순서 이동
 function notchUp(){
  if(power < 0){
-  // 제동 중이면 제동을 약하게(또는 중립으로)
   setNotch(power === -1 ? "N" : "B" + (Math.abs(power) - 1));
  } else if(power === 0){
-  // 중립이면 가속 시작 (P1)
   setNotch("P1");
  } else {
-  // 가속 중이면 가속 단계 증가 (최대 P5)
   setNotch("P" + Math.min(5, power + 1));
  }
 }
 
-// DN (ArrowDown): 가속(P) 방향에서 중립(N)으로, 혹은 중립(N)에서 제동(B) 방향으로 이동
+// DN: 가속 -> 중립 -> 제동 순서 이동
 function notchDown(){
  if(power > 0){
-  // 가속 중이면 가속을 약하게(또는 중립으로)
   setNotch(power === 1 ? "N" : "P" + (power - 1));
  } else if(power === 0){
-  // 중립이면 제동 시작 (B1)
   setNotch("B1");
  } else {
-  // 제동 중이면 제동 단계 증가 (최대 B5)
   setNotch("B" + Math.min(5, Math.abs(power) + 1));
  }
 }
