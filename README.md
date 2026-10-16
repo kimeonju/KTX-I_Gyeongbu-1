@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -45,6 +44,9 @@ hr{border:0;border-top:1px solid var(--line);margin:12px 0}
 #timetable tr.running,#timetable tr.running td{color:#47e59b}
 #timetable tr.completed,#timetable tr.completed td{color:#ff6474}
 #timetable tr.pending,#timetable tr.pending td{color:#ffd166}
+#otherTrains tr.running,#otherTrains tr.running td{color:#47e59b}
+#otherTrains tr.completed,#otherTrains tr.completed td{color:#ff6474}
+#otherTrains tr.pending,#otherTrains tr.pending td{color:#ffd166}
 @media(max-width:850px){.s8,.s6,.s4{grid-column:span 12}.big{font-size:36px}}
 </style>
 </head>
@@ -243,7 +245,6 @@ function initTrains(){
 }
 function trainProgress(t){
  const now=deviceSeconds();
- // 자정 경계에서도 출발 이후 경과시간 계산
  let elapsed=(now-t.departure+DAY)%DAY;
  if(elapsed>TRIP)return {active:false,km:-1,speed:0,elapsed};
  const p=Math.max(0,Math.min(1,elapsed/TRIP));
@@ -310,17 +311,32 @@ function updateOtherTable(){
  const body=$("otherTrains");body.innerHTML="";
  const now=deviceSeconds();
  for(const t of trains){
-  const p=trainProgress(t);
-  const status=!p.active?"운행 전/완료":p.km>=LEN-.1?"운행 완료":"운행 중";
-  // 해당 일자의 운행이 이미 끝났는지 판정
   let since=(now-t.departure+DAY)%DAY;
-  const actualStatus=since>TRIP?"운행 완료":p.active?"운행 중":"운행 전";
+  let actualStatus, cls;
+  if(since>TRIP){
+   actualStatus="운행 완료";
+   cls="completed";
+  }else if(pActive(t)){
+   actualStatus="운행 중";
+   cls="running";
+  }else{
+   actualStatus="운행 전";
+   cls="pending";
+  }
+
+  const p=trainProgress(t);
   const row=document.createElement("tr");
+  row.className=cls;
   const vals=[t.id,actualStatus,p.active?p.km.toFixed(1)+" km":"-",p.active?Math.round(p.speed)+" km/h":"-",
    p.active?((p.km-distance>=0?"+":"")+(p.km-distance).toFixed(1)+" km"):"-"];
   vals.forEach(v=>{const td=document.createElement("td");td.textContent=v;row.appendChild(td)});
   body.appendChild(row);
  }
+}
+function pActive(t){
+ const now=deviceSeconds();
+ let elapsed=(now-t.departure+DAY)%DAY;
+ return elapsed<=TRIP;
 }
 function updateTrack(){
  const box=$("trackMarks");box.innerHTML="";
