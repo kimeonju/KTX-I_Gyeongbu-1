@@ -30,7 +30,7 @@ label{display:block;color:var(--muted);margin:7px 0 4px}
 .progress span{display:block;height:100%;background:var(--green);width:0%}
 .badge{display:inline-block;padding:3px 8px;border-radius:99px;background:#27364a}
 .good{color:var(--green)}.warntext{color:var(--yellow)}.bad{color:var(--red)}
-.track{height:100px;position:relative;background:linear-gradient(#17283a,#0b121d);border-radius:9px;overflow:hidden;border:1px solid var(--line);margin-top:8px}
+.track{height:100px;position:relative;background:linear-gradient(#17283a,#0b121d);border-radius:99px;overflow:hidden;border:1px solid var(--line);margin-top:8px}
 .rail{position:absolute;left:0;right:0;top:53%;border-top:3px solid #72869c}
 .mark{position:absolute;top:30%;width:12px;height:26px;background:var(--blue);border:2px solid #e7f6ff;border-radius:3px;transform:translateX(-50%)}
 .mark.user{background:var(--green)}.mark.target{background:var(--yellow)}
@@ -297,9 +297,15 @@ function updateTimetable(){
  const body=$("timetable");body.innerHTML="";
  stations.forEach((s,i)=>{
   let state,cls;
-  if(arrived||distance>s.km+.15){state="운행 완료";cls="completed"}
-  else if(i===stationIndex||(Math.abs(distance-s.km)<=.15&&speed>.1)){state="운행 중";cls="running"}
-  else{state="운행 전";cls="pending"}
+  if(arrived||distance>s.km+.15){
+   state="운행 완료";cls="completed";
+  }else if(distance===0&&speed===0&&i===0){
+   state="운행 전";cls="pending";
+  }else if(i===stationIndex||(Math.abs(distance-s.km)<=.15&&speed>.1)){
+   state="운행 중";cls="running";
+  }else{
+   state="운행 전";cls="pending";
+  }
   const tr=document.createElement("tr");tr.className=cls;
   [s.name,s.arr||"-",s.dep||"-",s.km.toFixed(1)+" km",state].forEach(v=>{
    const td=document.createElement("td");td.textContent=v;tr.appendChild(td);
