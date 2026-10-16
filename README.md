@@ -246,7 +246,7 @@ function initTrains(){
 function trainProgress(t){
  const now=deviceSeconds();
  let elapsed=(now-t.departure+DAY)%DAY;
- if(elapsed>TRIP)return {active:false,km:-1,speed:0,elapsed};
+ if(elapsed>TRIP||elapsed<0)return {active:false,km:-1,speed:0,elapsed};
  const p=Math.max(0,Math.min(1,elapsed/TRIP));
  const km=LEN*p;
  const average=LEN/(TRIP/3600);
@@ -297,14 +297,18 @@ function updateTimetable(){
  const body=$("timetable");body.innerHTML="";
  stations.forEach((s,i)=>{
   let state,cls;
-  if(arrived||distance>s.km+.15){
-   state="운행 완료";cls="completed";
-  }else if(distance===0&&speed===0&&i===0){
-   state="운행 전";cls="pending";
-  }else if(i===stationIndex||(Math.abs(distance-s.km)<=.15&&speed>.1)){
-   state="운행 중";cls="running";
+  if(arrived || distance > s.km + 0.15){
+   state="운행 완료"; cls="completed";
+  }else if(Math.abs(distance - s.km) <= 0.15){
+   if(i === 0 && distance === 0 && speed === 0){
+    state="운행 전"; cls="pending";
+   } else {
+    state="운행 중"; cls="running";
+   }
+  }else if(distance > s.km){
+   state="운행 완료"; cls="completed";
   }else{
-   state="운행 전";cls="pending";
+   state="운행 전"; cls="pending";
   }
   const tr=document.createElement("tr");tr.className=cls;
   [s.name,s.arr||"-",s.dep||"-",s.km.toFixed(1)+" km",state].forEach(v=>{
@@ -319,15 +323,22 @@ function updateOtherTable(){
  for(const t of trains){
   let since=(now-t.departure+DAY)%DAY;
   let actualStatus, cls;
-  if(since>TRIP){
-   actualStatus="운행 완료";
-   cls="completed";
-  }else if(pActive(t)){
-   actualStatus="운행 중";
-   cls="running";
-  }else{
-   actualStatus="운행 전";
-   cls="pending";
+  if(since<=TRIP && now>=t.departure && (now - t.departure) < DAY/2){
+   if(pActive(t)){
+    actualStatus="운행 중";
+    cls="running";
+   }else{
+    actualStatus="운행 완료";
+    cls="completed";
+   }
+  } else {
+   if(now < t.departure && (t.departure - now) < DAY/2){
+    actualStatus="운행 전";
+    cls="pending";
+   } else {
+    actualStatus="운행 완료";
+    cls="completed";
+   }
   }
 
   const p=trainProgress(t);
@@ -342,7 +353,7 @@ function updateOtherTable(){
 function pActive(t){
  const now=deviceSeconds();
  let elapsed=(now-t.departure+DAY)%DAY;
- return elapsed<=TRIP;
+ return elapsed<=TRIP && elapsed>=0;
 }
 function updateTrack(){
  const box=$("trackMarks");box.innerHTML="";
@@ -460,6 +471,7 @@ document.querySelectorAll("[data-notch]").forEach(b=>b.addEventListener("click",
 document.addEventListener("keydown",e=>{
  if(["INPUT","SELECT","TEXTAREA"].includes(document.activeElement.tagName))return;
  if(e.code==="Space"){e.preventDefault();if(!heldKeys.has("Space"))pedalPress();heldKeys.add("Space");return}
+ if(e.code==="ArrowUp"||e.code==="ArrowDown"){e.preventDefault();} // 화면 스크롤 방지
  if(heldKeys.has(e.code))return;heldKeys.add(e.code);
  const k=e.key.toLowerCase();
  if(k==="f")setDirection(1);else if(k==="r")setDirection(-1);
