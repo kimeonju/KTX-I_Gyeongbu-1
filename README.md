@@ -53,7 +53,7 @@ hr{border:0;border-top:1px solid var(--line);margin:12px 0}
 <body>
 <header>
 <h1>ERR · Eco Rapid Rail</h1>
-<p>서울 → 부산센텀 · 경고음 및 가감속 시스템 연동 시뮬레이터</p>
+<p>서울 → 부산센텀 · 경고음 반복 재생 및 가감속 시스템 연동 시뮬레이터</p>
 </header>
 <main>
 <section class="panel s8">
@@ -167,6 +167,8 @@ let lastFrame=performance.now(),vigilanceLast=performance.now(),warningStart=nul
 let overtakeMode=false,targetGap=2,targetSpeed=330,notchLabel="N";
 const trains=[],heldKeys=new Set();
 
+let warningSoundInterval = null;
+
 // 경고음 재생 함수 (Web Audio API)
 function playWarningSound() {
  try {
@@ -174,13 +176,32 @@ function playWarningSound() {
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
   osc.type = 'sine';
-  osc.frequency.setValueAtTime(880, audioCtx.currentTime); // 높은 음 (A5)
-  gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+  osc.frequency.setValueAtTime(880, audioCtx.currentTime); // 삐- 소리 (A5)
+  gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
   osc.connect(gain);
   gain.connect(audioCtx.destination);
   osc.start();
-  osc.stop(audioCtx.currentTime + 0.3);
+  osc.stop(audioCtx.currentTime + 0.4);
  } catch(e) {}
+}
+
+function startWarningSound() {
+ if (warningSoundInterval) return;
+ playWarningSound();
+ warningSoundInterval = setInterval(() => {
+  if (warningStart !== null && !emergency) {
+   playWarningSound();
+  } else {
+   stopWarningSound();
+  }
+ }, 1000); // 1초마다 삐- 소리 반복
+}
+
+function stopWarningSound() {
+ if (warningSoundInterval) {
+  clearInterval(warningSoundInterval);
+  warningSoundInterval = null;
+ }
 }
 
 function deviceSeconds(){
@@ -226,7 +247,12 @@ function setDirection(d){
  if(speed>.1){log("정차 후 방향 변경 필요");return}
  direction=d;log(d===1?"전진 설정":"후진 설정");render();
 }
-function applyEmergency(){emergency=true;power=-5;notchLabel="EB";log("비상제동 작동");render()}
+function applyEmergency(){
+ emergency=true;power=-5;notchLabel="EB";
+ stopWarningSound();
+ log("비상제동 작동");
+ render();
+}
 function releaseBrake(){emergency=false;power=0;notchLabel="N";log("비상제동 해제");render()}
 function toggleVCB(){vcb=!vcb;if(!vcb){power=0;notchLabel="N"}log("VCB "+(vcb?"ON":"OFF"));render()}
 function togglePantograph(){pantograph=!pantograph;if(!pantograph){power=0;notchLabel="N"}log("팬터그래프 "+(pantograph?"올림":"내림"));render()}
@@ -482,7 +508,7 @@ function tick(now){
  const since=performance.now()-vigilanceLast;
  if(since>55000&&warningStart===null){
   warningStart=performance.now();
-  playWarningSound(); // 경고음 재생
+  startWarningSound(); // 15초 동안 경고음 반복 재생 시작
   log("경계장치 경고");
  }
  if(warningStart!==null&&performance.now()-warningStart>15000&&!emergency){
@@ -494,7 +520,12 @@ function tick(now){
  requestAnimationFrame(tick);
 }
 
-function pedalPress(){vigilanceLast=performance.now();warningStart=null;$("pedalTime").textContent="최근 입력: "+deviceTimeText()}
+function pedalPress(){
+ vigilanceLast=performance.now();
+ warningStart=null;
+ stopWarningSound(); // 페달 누르면 경고음 중지
+ $("pedalTime").textContent="최근 입력: "+deviceTimeText();
+}
 function toggleOvertake(){overtakeMode=!overtakeMode;log("추월 모드 "+(overtakeMode?"ON · 앞앞차 기준":"OFF"));render();updateTrack()}
 
 function notchUp(){
@@ -564,7 +595,7 @@ updateTimetable();
 updateOtherTable();
 updateTrack();
 render();
-log("시뮬레이터 시작 · 경고음 및 가감속 시스템 적용 완료");
+log("시뮬레이터 시작 · 경고음 반복 재생 및 규정 적용 완료");
 requestAnimationFrame(tick);
 </script>
 </body>
