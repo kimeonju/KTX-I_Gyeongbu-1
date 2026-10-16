@@ -53,7 +53,7 @@ hr{border:0;border-top:1px solid var(--line);margin:12px 0}
 <body>
 <header>
 <h1>ERR · Eco Rapid Rail</h1>
-<p>서울 → 부산센텀 · ERR (330km/h) 및 일반 KTX (300km/h) 정차역 연동 시뮬레이터</p>
+<p>서울 → 부산센텀 · 경고음 및 가감속 시스템 연동 시뮬레이터</p>
 </header>
 <main>
 <section class="panel s8">
@@ -147,7 +147,6 @@ hr{border:0;border-top:1px solid var(--line);margin:12px 0}
 const $=id=>document.getElementById(id);
 const LEN=417.4,DAY=86400;
 
-// ERR 001 시간표 (대전/동대구 5분, 그 외 3분 정차 반영)
 const stations=[
 {name:"서울",km:0,limit:330,arr:"",dep:5*3600},
 {name:"광명",km:17,limit:330,arr:5*3600+20*60,dep:5*3600+23*60},
@@ -157,7 +156,7 @@ const stations=[
 {name:"김천(구미)",km:227.3,limit:330,arr:7*3600+0*60,dep:7*3600+3*60},
 {name:"동대구",km:293.1,limit:330,arr:7*3600+20*60,dep:7*3600+25*60},
 {name:"경주",km:346.8,limit:330,arr:7*3600+43*60,dep:7*3600+46*60},
-{name:"태화강",km:380,limit:330,arr:8*3600+0*60,arrdep:8*3600+3*60,dep:8*3600+3*60},
+{name:"태화강",km:380,limit:330,arr:8*3600+0*60,dep:8*3600+3*60},
 {name:"부산센텀",km:417.4,limit:330,arr:8*3600+23*60,dep:""}
 ];
 
@@ -167,6 +166,22 @@ let turnout="직진",stationIndex=0,arrived=false;
 let lastFrame=performance.now(),vigilanceLast=performance.now(),warningStart=null;
 let overtakeMode=false,targetGap=2,targetSpeed=330,notchLabel="N";
 const trains=[],heldKeys=new Set();
+
+// 경고음 재생 함수 (Web Audio API)
+function playWarningSound() {
+ try {
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(880, audioCtx.currentTime); // 높은 음 (A5)
+  gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.3);
+ } catch(e) {}
+}
 
 function deviceSeconds(){
  const d=new Date();
@@ -233,7 +248,6 @@ function toggleDoor(side){
  log((side==="L"?"좌측":"우측")+" 출입문 "+((side==="L"?leftDoor:rightDoor)?"열림":"닫힘"));render();
 }
 
-/* 일반 KTX001~109: 최고 300km/h, 가감속 1km/h/s 정확히 연동 */
 function initTrains(){
  for(let n=1;n<=109;n+=2){
   const id="KTX"+String(n).padStart(3,"0");
@@ -254,9 +268,9 @@ function getTrainState(t, nowSec){
   let endKm=stations[i+1].km;
   let dist=endKm - startKm;
   let isLongStop=(stations[i].name==="대전" || stations[i].name==="동대구");
-  let stopTime=(i===0)?0:(isLongStop?300:180); // 대전/동대구 5분(300초), 그외 3분(180초)
+  let stopTime=(i===0)?0:(isLongStop?300:180);
   
-  let a=1.0; // 1 km/h/s
+  let a=1.0; 
   let vPeak=Math.min(300, Math.sqrt(dist * a * 3600));
   
   let accelTime=vPeak / a;
@@ -444,7 +458,7 @@ function tick(now){
  let acceleration=0;
  if(emergency)acceleration=-5;
  else if(power>0){
-  if(vcb&&pantograph&&direction!==0)acceleration=power*0.36; // ERR 001: 1.8 km/h/s
+  if(vcb&&pantograph&&direction!==0)acceleration=power*0.36; 
   else{power=0;notchLabel="N"}
  }else if(power<0)acceleration=power*0.36;
 
@@ -464,9 +478,18 @@ function tick(now){
  if(speed>.05&&direction!==0&&!arrived){distance+=direction*speed/3600*dt;distance=Math.max(0,Math.min(LEN,distance))}
  if(distance>=LEN&&direction===1&&!arrived){distance=LEN;speed=0;power=0;notchLabel="N";arrived=true;log("부산센텀 도착")}
  if(distance<=0&&direction===-1){distance=0;speed=0}
+
  const since=performance.now()-vigilanceLast;
- if(since>55000&&warningStart===null){warningStart=performance.now();log("경계장치 경고")}
- if(warningStart!==null&&performance.now()-warningStart>15000&&!emergency){applyEmergency();log("경계장치 응답 없음 · 비상제동")}
+ if(since>55000&&warningStart===null){
+  warningStart=performance.now();
+  playWarningSound(); // 경고음 재생
+  log("경계장치 경고");
+ }
+ if(warningStart!==null&&performance.now()-warningStart>15000&&!emergency){
+  applyEmergency();
+  log("경계장치 응답 없음 · 비상제동");
+ }
+
  passStations();render();updateTimetable();updateOtherTable();updateTrack();
  requestAnimationFrame(tick);
 }
@@ -541,7 +564,7 @@ updateTimetable();
 updateOtherTable();
 updateTrack();
 render();
-log("시뮬레이터 시작 · 일반 KTX 300km/h 및 정차역 규정 적용 완료");
+log("시뮬레이터 시작 · 경고음 및 가감속 시스템 적용 완료");
 requestAnimationFrame(tick);
 </script>
 </body>
