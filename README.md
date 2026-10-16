@@ -442,10 +442,35 @@ function tick(now){
 }
 function pedalPress(){vigilanceLast=performance.now();warningStart=null;$("pedalTime").textContent="최근 입력: "+deviceTimeText()}
 function toggleOvertake(){overtakeMode=!overtakeMode;log("추월 모드 "+(overtakeMode?"ON · 앞앞차 기준":"OFF"));render();updateTrack()}
-function changeNotch(d){
- if(d>0)setNotch("P"+(power>0?Math.min(5,power+1):1));
- else setNotch("B"+(power<0?Math.min(5,Math.abs(power)+1):1));
+
+// UP (ArrowUp): 제동(B) 방향에서 중립(N)으로, 혹은 중립(N)에서 가속(P) 방향으로 이동
+function notchUp(){
+ if(power < 0){
+  // 제동 중이면 제동을 약하게(또는 중립으로)
+  setNotch(power === -1 ? "N" : "B" + (Math.abs(power) - 1));
+ } else if(power === 0){
+  // 중립이면 가속 시작 (P1)
+  setNotch("P1");
+ } else {
+  // 가속 중이면 가속 단계 증가 (최대 P5)
+  setNotch("P" + Math.min(5, power + 1));
+ }
 }
+
+// DN (ArrowDown): 가속(P) 방향에서 중립(N)으로, 혹은 중립(N)에서 제동(B) 방향으로 이동
+function notchDown(){
+ if(power > 0){
+  // 가속 중이면 가속을 약하게(또는 중립으로)
+  setNotch(power === 1 ? "N" : "P" + (power - 1));
+ } else if(power === 0){
+  // 중립이면 제동 시작 (B1)
+  setNotch("B1");
+ } else {
+  // 제동 중이면 제동 단계 증가 (최대 B5)
+  setNotch("B" + Math.min(5, Math.abs(power) + 1));
+ }
+}
+
 $("forward").addEventListener("click",()=>setDirection(1));
 $("reverse").addEventListener("click",()=>setDirection(-1));
 $("vcbButton").addEventListener("click",toggleVCB);
@@ -471,7 +496,7 @@ document.querySelectorAll("[data-notch]").forEach(b=>b.addEventListener("click",
 document.addEventListener("keydown",e=>{
  if(["INPUT","SELECT","TEXTAREA"].includes(document.activeElement.tagName))return;
  if(e.code==="Space"){e.preventDefault();if(!heldKeys.has("Space"))pedalPress();heldKeys.add("Space");return}
- if(e.code==="ArrowUp"||e.code==="ArrowDown"){e.preventDefault();} // 화면 스크롤 방지
+ if(e.code==="ArrowUp"||e.code==="ArrowDown"){e.preventDefault();}
  if(heldKeys.has(e.code))return;heldKeys.add(e.code);
  const k=e.key.toLowerCase();
  if(k==="f")setDirection(1);else if(k==="r")setDirection(-1);
@@ -480,7 +505,8 @@ document.addEventListener("keydown",e=>{
  else if(k==="w")toggleDoor("L");else if(k==="e")toggleDoor("R");
  else if(k==="a")togglePermission("L");else if(k==="d")togglePermission("R");
  else if(k==="4")setTurnout("좌측");else if(k==="5")setTurnout("직진");else if(k==="6")setTurnout("우측");
- else if(e.key==="ArrowUp")changeNotch(1);else if(e.key==="ArrowDown")changeNotch(-1);
+ else if(e.key==="ArrowUp") notchUp();
+ else if(e.key==="ArrowDown") notchDown();
 });
 document.addEventListener("keyup",e=>heldKeys.delete(e.code));
 window.addEventListener("blur",()=>heldKeys.clear());
