@@ -53,7 +53,7 @@ hr{border:0;border-top:1px solid var(--line);margin:12px 0}
 <body>
 <header>
 <h1>ERR · Eco Rapid Rail</h1>
-<p>서울 → 부산센텀 · 기기 시각 연동 열차 시뮬레이터</p>
+<p>서울 → 부산센텀 · 최고 330km/h · 1.8km/h/s 가감속 시뮬레이터</p>
 </header>
 <main>
 <section class="panel s8">
@@ -64,8 +64,8 @@ hr{border:0;border-top:1px solid var(--line);margin:12px 0}
 </div>
 <div class="g3" style="margin-top:8px">
 <div class="stat"><small>노치</small><strong id="notch">N</strong></div>
-<div class="stat"><small>선로 제한속도</small><strong id="limit">170 km/h</strong></div>
-<div class="stat"><small>목표속도</small><strong id="targetSpeed">170 km/h</strong></div>
+<div class="stat"><small>선로 제한속도</small><strong id="limit">330 km/h</strong></div>
+<div class="stat"><small>목표속도</small><strong id="targetSpeed">330 km/h</strong></div>
 <div class="stat"><small>VCB</small><strong id="vcb">OFF</strong></div>
 <div class="stat"><small>팬터그래프</small><strong id="pant">하강</strong></div>
 <div class="stat"><small>상태</small><strong id="status">정차</strong></div>
@@ -97,7 +97,7 @@ hr{border:0;border-top:1px solid var(--line);margin:12px 0}
 <label for="gapInput">목표 간격 (km)</label>
 <div class="row"><input id="gapInput" type="number" min=".5" max="20" step=".5" value="2"><button id="setGap">적용</button></div>
 <p id="autoExplanation" class="muted">추월 모드 OFF</p>
-<div class="stat"><small>목표 제한속도</small><strong id="autoLimit">170 km/h</strong></div>
+<div class="stat"><small>목표 제한속도</small><strong id="autoLimit">330 km/h</strong></div>
 </section>
 
 <section class="panel s12">
@@ -137,7 +137,7 @@ hr{border:0;border-top:1px solid var(--line);margin:12px 0}
 <section class="panel s6">
 <h2>다른 KTX 운행 현황</h2>
 <div class="scroll"><table><thead><tr><th>열차</th><th>상태</th><th>위치</th><th>속도</th><th>ERR와 거리</th></tr></thead><tbody id="otherTrains"></tbody></table></div>
-<p class="muted">시뮬레이션 시간표 기반이며 실제 KTX 운행정보와 연결되지는 않습니다.</p>
+<p class="muted">일반 KTX 최고 300km/h, 가감속 1.0km/h/s 적용</p>
 </section>
 <section class="panel s12"><h2>운행 기록</h2><div id="log" class="log"></div></section>
 </main>
@@ -145,24 +145,24 @@ hr{border:0;border-top:1px solid var(--line);margin:12px 0}
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
-const LEN=417.4,DAY=86400,TRIP=210*60;
+const LEN=417.4,DAY=86400,TRIP=190*60; // ERR 001 기준 단축 운행 시간
 const stations=[
-{name:"서울",km:0,limit:170,arr:"",dep:"05:00"},
-{name:"광명",km:17,limit:300,arr:"05:20",dep:"05:23"},
-{name:"천안아산",km:96.5,limit:300,arr:"05:50",dep:"05:53"},
-{name:"오송",km:131.5,limit:300,arr:"06:10",dep:"06:13"},
-{name:"대전",km:166.3,limit:300,arr:"06:30",dep:"06:35"},
-{name:"김천(구미)",km:227.3,limit:300,arr:"07:00",dep:"07:03"},
-{name:"동대구",km:293.1,limit:300,arr:"07:20",dep:"07:25"},
-{name:"경주",km:346.8,limit:270,arr:"07:40",dep:"07:45"},
-{name:"태화강",km:380,limit:270,arr:"08:10",dep:"08:15"},
-{name:"부산센텀",km:417.4,limit:270,arr:"08:30",dep:""}
+{name:"서울",km:0,limit:330,arr:"",dep:"05:00"},
+{name:"광명",km:17,limit:330,arr:"05:18",dep:"05:21"},
+{name:"천안아산",km:96.5,limit:330,arr:"05:43",dep:"05:46"},
+{name:"오송",km:131.5,limit:330,arr:"05:58",dep:"06:01"},
+{name:"대전",km:166.3,limit:330,arr:"06:13",dep:"06:17"},
+{name:"김천(구미)",km:227.3,limit:330,arr:"06:37",dep:"06:40"},
+{name:"동대구",km:293.1,limit:330,arr:"07:00",dep:"07:05"},
+{name:"경주",km:346.8,limit:330,arr:"07:22",dep:"07:26"},
+{name:"태화강",km:380,limit:330,arr:"07:37",dep:"07:41"},
+{name:"부산센텀",km:417.4,limit:330,arr:"08:00",dep:""}
 ];
 let speed=0,distance=0,direction=0,power=0,vcb=false,pantograph=false;
 let emergency=false,leftDoor=false,rightDoor=false,allowL=false,allowR=false;
 let turnout="직진",stationIndex=0,arrived=false;
 let lastFrame=performance.now(),vigilanceLast=performance.now(),warningStart=null;
-let overtakeMode=false,targetGap=2,targetSpeed=170,notchLabel="N";
+let overtakeMode=false,targetGap=2,targetSpeed=330,notchLabel="N";
 const trains=[],heldKeys=new Set();
 
 function deviceSeconds(){
@@ -173,10 +173,6 @@ function deviceTimeText(){
  const d=new Date();
  return [d.getHours(),d.getMinutes(),d.getSeconds()].map(v=>String(v).padStart(2,"0")).join(":");
 }
-function secondsText(sec){
- sec=((Math.floor(sec)%DAY)+DAY)%DAY;
- return [Math.floor(sec/3600),Math.floor(sec%3600/60),sec%60].map(v=>String(v).padStart(2,"0")).join(":");
-}
 function syncClock(){$("clock").textContent=deviceTimeText()}
 function log(msg){
  const el=document.createElement("div");
@@ -185,9 +181,7 @@ function log(msg){
  while($("log").children.length>100)$("log").lastChild.remove();
 }
 function currentLimit(){
- if(distance<17)return 170;
- if(distance>=346.8)return 270;
- return 300;
+ return 330;
 }
 function currentStationName(){
  let result=stations[0].name;
@@ -233,7 +227,7 @@ function toggleDoor(side){
  log((side==="L"?"좌측":"우측")+" 출입문 "+((side==="L"?leftDoor:rightDoor)?"열림":"닫힘"));render();
 }
 
-/* KTX001, 003 ... 109: 05:00부터 20분 간격 */
+/* 일반 KTX001~109: 최고 300km/h, 가감속 1.0 km/h/s */
 function initTrains(){
  for(let n=1;n<=109;n+=2){
   const id="KTX"+String(n).padStart(3,"0");
@@ -246,16 +240,15 @@ function initTrains(){
 function trainProgress(t){
  const now=deviceSeconds();
  let elapsed=(now-t.departure+DAY)%DAY;
- if(elapsed>TRIP||elapsed<0)return {active:false,km:-1,speed:0,elapsed};
- const p=Math.max(0,Math.min(1,elapsed/TRIP));
+ const ordinaryTrip=230*60; // 일반 KTX 주행 소요시간
+ if(elapsed>ordinaryTrip||elapsed<0)return {active:false,km:-1,speed:0,elapsed};
+ const p=Math.max(0,Math.min(1,elapsed/ordinaryTrip));
  const km=LEN*p;
- const average=LEN/(TRIP/3600);
+ const average=LEN/(ordinaryTrip/3600);
  let v;
- if(p<.08)v=Math.min(170,average*p/.08);
- else if(p>.94)v=Math.max(0,average*(1-p)/.06);
- else v=average;
- if(km>=17&&km<346.8)v=Math.min(v,300);
- if(km>=346.8)v=Math.min(v,270);
+ if(p<.05)v=Math.min(300,average*p/.05);
+ else if(p>.95)v=Math.max(0,average*(1-p)/.05);
+ else v=Math.min(300,average*1.15);
  return {active:true,km,speed:v,elapsed};
 }
 function updateOtherTrains(){
@@ -273,7 +266,7 @@ function getAheadAhead(){
  return {base,front,gap:front?front.km-distance:null};
 }
 function calculateTargetSpeed(){
- const limit=currentLimit();
+ const limit=330;
  if(!overtakeMode){
   $("autoExplanation").textContent="추월 모드 OFF · 수동 운전";
   $("autoLimit").textContent=limit+" km/h";return limit;
@@ -285,10 +278,10 @@ function calculateTargetSpeed(){
  }
  const g=info.gap;let allowed=limit;
  if(g<=.2)allowed=0;
- else if(g<targetGap*.5)allowed=Math.min(limit,40);
- else if(g<targetGap*.75)allowed=Math.min(limit,80);
- else if(g<targetGap)allowed=Math.min(limit,130);
- else if(g<targetGap+1)allowed=Math.min(limit,200);
+ else if(g<targetGap*.5)allowed=Math.min(limit,60);
+ else if(g<targetGap*.75)allowed=Math.min(limit,120);
+ else if(g<targetGap)allowed=Math.min(limit,180);
+ else if(g<targetGap+1)allowed=Math.min(limit,260);
  $("autoExplanation").textContent=info.front.id+" 기준 · 간격 "+g.toFixed(2)+" km";
  $("autoLimit").textContent=Math.round(allowed)+" km/h";
  return allowed;
@@ -320,11 +313,12 @@ function updateTimetable(){
 function updateOtherTable(){
  const body=$("otherTrains");body.innerHTML="";
  const now=deviceSeconds();
+ const ordinaryTrip=230*60;
  for(const t of trains){
   let since=(now-t.departure+DAY)%DAY;
   let actualStatus, cls;
-  if(since<=TRIP && now>=t.departure && (now - t.departure) < DAY/2){
-   if(pActive(t)){
+  if(since<=ordinaryTrip && now>=t.departure && (now - t.departure) < DAY/2){
+   if(since <= ordinaryTrip && since >= 0){
     actualStatus="운행 중";
     cls="running";
    }else{
@@ -350,11 +344,6 @@ function updateOtherTable(){
   body.appendChild(row);
  }
 }
-function pActive(t){
- const now=deviceSeconds();
- let elapsed=(now-t.departure+DAY)%DAY;
- return elapsed<=TRIP && elapsed>=0;
-}
 function updateTrack(){
  const box=$("trackMarks");box.innerHTML="";
  [{n:"서울",k:0},{n:"광명",k:17},{n:"대전",k:166.3},{n:"동대구",k:293.1},{n:"부산센텀",k:LEN}].forEach(p=>{
@@ -370,10 +359,10 @@ function updateTrack(){
  }
 }
 function render(){
- $("speed").textContent=Math.round(speed);$("speedbar").style.width=Math.min(100,speed/300*100)+"%";
+ $("speed").textContent=Math.round(speed);$("speedbar").style.width=Math.min(100,speed/330*100)+"%";
  $("distance").textContent=distance.toFixed(1)+" km";$("station").textContent=currentStationName();
  const ni=nextStationIndex();$("next").textContent=ni<0?"종착역":stations[ni].name;
- $("notch").textContent=notchLabel;$("limit").textContent=currentLimit()+" km/h";
+ $("notch").textContent=notchLabel;$("limit").textContent="330 km/h";
  $("targetSpeed").textContent=Math.round(targetSpeed)+" km/h";
  $("vcb").textContent=vcb?"ON":"OFF";$("pant").textContent=pantograph?"상승":"하강";
  $("status").textContent=arrived?"운행 완료":emergency?"비상제동":speed>.1?"주행":"정차";
@@ -384,9 +373,8 @@ function render(){
  $("turnL").classList.toggle("active",turnout==="좌측");$("turnS").classList.toggle("active",turnout==="직진");$("turnR").classList.toggle("active",turnout==="우측");
  $("overtake").textContent="추월 모드 "+(overtakeMode?"ON":"OFF");$("overtake").classList.toggle("active",overtakeMode);
  $("gapSetting").textContent=targetGap.toFixed(1)+" km";$("emergencyStatus").textContent=emergency?"작동":"해제";
- const over=speed>currentLimit()+1;$("overspeed").textContent=over?"초과":"정상";$("overspeed").className=over?"bad":"good";
- const ns=nextStationIndex(),warn=ns>=0&&stations[ns].limit<speed;
- $("speedWarning").textContent=warn?"감속 예고":"정상";$("speedWarning").className=warn?"warntext":"good";
+ const over=speed>331;$("overspeed").textContent=over?"초과":"정상";$("overspeed").className=over?"bad":"good";
+ $("speedWarning").textContent="정상";$("speedWarning").className="good";
  $("vigilance").textContent=warningStart!==null?"경고":"정상";$("vigilance").className=warningStart!==null?"bad":"good";
  const info=getAheadAhead();
  $("frontFront").textContent=info.front?info.front.id:"미검출";
@@ -410,13 +398,13 @@ function passStations(){
 function tick(now){
  const dt=Math.min((now-lastFrame)/1000,.1);lastFrame=now;
  syncClock();updateOtherTrains();
- const limit=currentLimit();targetSpeed=calculateTargetSpeed();
+ const limit=330;targetSpeed=calculateTargetSpeed();
  let acceleration=0;
  if(emergency)acceleration=-5;
  else if(power>0){
-  if(vcb&&pantograph&&direction!==0)acceleration=power*.36;
+  if(vcb&&pantograph&&direction!==0)acceleration=power*0.36; // 1.8 km/h/s 기준 (P5시 1.8)
   else{power=0;notchLabel="N"}
- }else if(power<0)acceleration=power*.36;
+ }else if(power<0)acceleration=power*0.36;
 
  if(overtakeMode&&!emergency){
   const info=getAheadAhead();
@@ -427,9 +415,9 @@ function tick(now){
    else if(g<targetGap*.75)acceleration=Math.min(acceleration,-.9);
    else if(g<targetGap)acceleration=Math.min(acceleration,-.36);
   }
-  if(speed>targetSpeed+1)acceleration=Math.min(acceleration,-.72);
+  if(speed>targetSpeed+1)acceleration=Math.min(acceleration,-1.8);
  }
- speed=Math.max(0,Math.min(320,speed+acceleration*dt));
+ speed=Math.max(0,Math.min(330,speed+acceleration*dt));
  if(speed>limit){speed=Math.max(limit,speed-1.8*dt);if(speed>limit+5&&!emergency)applyEmergency()}
  if(speed>.05&&direction!==0&&!arrived){distance+=direction*speed/3600*dt;distance=Math.max(0,Math.min(LEN,distance))}
  if(distance>=LEN&&direction===1&&!arrived){distance=LEN;speed=0;power=0;notchLabel="N";arrived=true;log("부산센텀 도착")}
@@ -443,7 +431,6 @@ function tick(now){
 function pedalPress(){vigilanceLast=performance.now();warningStart=null;$("pedalTime").textContent="최근 입력: "+deviceTimeText()}
 function toggleOvertake(){overtakeMode=!overtakeMode;log("추월 모드 "+(overtakeMode?"ON · 앞앞차 기준":"OFF"));render();updateTrack()}
 
-// UP: 제동 -> 중립 -> 가속 순서 이동
 function notchUp(){
  if(power < 0){
   setNotch(power === -1 ? "N" : "B" + (Math.abs(power) - 1));
@@ -454,7 +441,6 @@ function notchUp(){
  }
 }
 
-// DN: 가속 -> 중립 -> 제동 순서 이동
 function notchDown(){
  if(power > 0){
   setNotch(power === 1 ? "N" : "P" + (power - 1));
@@ -512,7 +498,7 @@ updateTimetable();
 updateOtherTable();
 updateTrack();
 render();
-log("시뮬레이터 시작 · 기기 시각 연동");
+log("시뮬레이터 시작 · ERR 최고 330km/h / 일반 KTX 최고 300km/h 적용");
 requestAnimationFrame(tick);
 </script>
 </body>
